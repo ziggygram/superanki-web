@@ -2,43 +2,48 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { Brain, Sparkles, Package, Target, FolderOpen, Cloud } from "lucide-react";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gwhympdeyrptdpuxxmlk.supabase.co";
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3aHltcGRleXJwdGRwdXh4bWxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxOTkzMDksImV4cCI6MjA4ODc3NTMwOX0.vDJbhn9Y-3V1ns2sLiCizyRY8c9DoiFdBztSE5T4l2Q";
 
+const featureIcons = [Brain, Sparkles, Package, Target, FolderOpen, Cloud];
+const featureColors = [
+  "text-violet-400 bg-violet-500/10",
+  "text-indigo-400 bg-indigo-500/10",
+  "text-cyan-400 bg-cyan-500/10",
+  "text-emerald-400 bg-emerald-500/10",
+  "text-amber-400 bg-amber-500/10",
+  "text-rose-400 bg-rose-500/10",
+];
+
 const features = [
   {
-    icon: "🧠",
     title: "FSRS Algorithm",
     desc: "State-of-the-art spaced repetition. Review at the scientifically optimal moment for maximum retention.",
     gradient: "from-violet-500 to-indigo-500",
   },
   {
-    icon: "✨",
     title: "AI Study Coach",
     desc: "Personalized tips after every session. AI-powered card generation and leech remediation.",
     gradient: "from-indigo-500 to-cyan-500",
   },
   {
-    icon: "📦",
     title: "Import from Anki",
     desc: "Drop in your .apkg files. Sub-decks, media, field mapping — it just works.",
     gradient: "from-cyan-500 to-emerald-500",
   },
   {
-    icon: "🎯",
     title: "Quiz Modes",
     desc: "Multiple choice, true/false, typed answers. Test yourself beyond flashcards.",
     gradient: "from-emerald-500 to-yellow-500",
   },
   {
-    icon: "📂",
     title: "Folders & Drag-Drop",
     desc: "Organize decks into folders. Drag and drop to reorganize. Study entire folders at once.",
     gradient: "from-yellow-500 to-orange-500",
   },
   {
-    icon: "☁️",
     title: "Cloud Backup",
     desc: "Your decks backed up securely. Never lose your progress. Sync across devices.",
     gradient: "from-orange-500 to-rose-500",
@@ -246,21 +251,25 @@ export default function Home() {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((f, i) => (
-              <div
-                key={f.title}
-                className="group relative rounded-2xl border border-gray-800/80 bg-gray-900/30 p-8 hover:border-gray-700/80 transition-all duration-300 hover:-translate-y-1"
-                style={{ animationDelay: `${i * 100}ms` }}
-              >
-                {/* Hover gradient */}
-                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${f.gradient} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-300`} />
-                <div className="relative">
-                  <div className="text-4xl mb-5">{f.icon}</div>
-                  <h3 className="text-xl font-semibold text-white mb-3">{f.title}</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">{f.desc}</p>
+            {features.map((f, i) => {
+              const Icon = featureIcons[i];
+              return (
+                <div
+                  key={f.title}
+                  className="group relative rounded-2xl border border-gray-800/80 bg-gray-900/30 p-8 hover:border-gray-700/80 transition-all duration-300 hover:-translate-y-1"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${f.gradient} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-300`} />
+                  <div className="relative">
+                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${featureColors[i]} mb-5`}>
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-white mb-3">{f.title}</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">{f.desc}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
