@@ -6,13 +6,22 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "SuperAnki - The Smartest Way to Learn Anything",
-  description:
-    "Master any subject with spaced repetition powered by the FSRS algorithm and an AI study coach. Import from Anki, quiz yourself, and organize your knowledge.",
+  description: "Spaced repetition powered by FSRS, AI study coach, and full Anki compatibility. Import your decks, study smarter, master any subject.",
   openGraph: {
     title: "SuperAnki - The Smartest Way to Learn Anything",
-    description:
-      "Master any subject with spaced repetition powered by the FSRS algorithm and an AI study coach.",
+    description: "Spaced repetition powered by FSRS, AI study coach, and full Anki compatibility.",
+    url: "https://superanki.app",
+    siteName: "SuperAnki",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SuperAnki - The Smartest Way to Learn Anything",
+    description: "Spaced repetition powered by FSRS, AI study coach, and full Anki compatibility.",
+  },
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
 };
 
@@ -22,10 +31,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark scroll-smooth">
-      <body className={`${inter.className} bg-gray-950 text-white antialiased`}>
-        {children}
-      </body>
+    <html lang="en">
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
