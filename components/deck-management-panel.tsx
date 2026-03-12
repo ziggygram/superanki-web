@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Download, LoaderCircle, Upload } from "lucide-react";
 
 type ActionState =
@@ -24,6 +25,7 @@ export function DeckManagementPanel({
   restoreBlockedReason?: string | null;
   importBlockedReason?: string | null;
 }) {
+  const router = useRouter();
   const [restoreState, setRestoreState] = useState<ActionState>(null);
   const [importState, setImportState] = useState<ActionState>(null);
   const [restoreLoading, setRestoreLoading] = useState(false);
@@ -90,6 +92,10 @@ export function DeckManagementPanel({
       const formData = new FormData();
       formData.set("file", selectedFile);
 
+      if (deckId) {
+        formData.set("deckId", deckId);
+      }
+
       const response = await fetch("/api/imports", {
         method: "POST",
         body: formData,
@@ -103,6 +109,9 @@ export function DeckManagementPanel({
           title: payload.error || "Import request failed",
           description: payload.nextStep || "The import workflow is not available yet.",
         });
+        if (payload.importJob?.id) {
+          router.refresh();
+        }
         return;
       }
 
@@ -114,6 +123,7 @@ export function DeckManagementPanel({
           `The package for ${deckName ?? "this account"} was handed off to the configured import service.`,
       });
       setSelectedFile(null);
+      router.refresh();
     } catch {
       setImportState({
         tone: "error",
@@ -170,7 +180,7 @@ export function DeckManagementPanel({
             <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Import management</p>
             <h3 className="mt-2 text-2xl font-bold text-white">Queue a web import handoff</h3>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              This route accepts Anki packages and either forwards them to a configured import service or reports the exact blocker instead of pretending the browser can import the file locally.
+              This route now creates durable import job rows before worker handoff, then surfaces real status history in the deck workspace instead of relying on one transient toast.
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">

@@ -1,4 +1,5 @@
 import { isImportConfigured } from "@/lib/imports";
+import { type ImportJobRow, formatImportJobStatus } from "@/lib/import-jobs";
 import { isStorageConfigured } from "@/lib/object-storage";
 import { createClient } from "@/lib/supabase/server";
 
@@ -67,7 +68,7 @@ async function getBaseAccountData() {
     return { user: null as null };
   }
 
-  const [profileResult, syncResult, statsResult] = await Promise.all([
+  const [profileResult, syncResult, statsResult, importJobsResult] = await Promise.all([
     supabase.from("profiles").select("email, display_name, created_at").eq("id", user.id).maybeSingle(),
     supabase
       .from("deck_sync")
@@ -79,14 +80,23 @@ async function getBaseAccountData() {
       .select("date, cards_reviewed, new_cards_studied, time_spent_seconds, retention_rate")
       .order("date", { ascending: false })
       .limit(30),
+    supabase
+      .from("import_jobs")
+      .select(
+        "id, user_id, deck_sync_id, source_filename, file_size_bytes, file_content_type, source_extension, status, worker_job_id, worker_status, error_message, created_at, updated_at, completed_at",
+      )
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
 
   const profile = normalizeQueryResult<ProfileRow>("profiles", profileResult);
   const sync = normalizeQueryResult<SyncRow[]>("deck_sync", syncResult);
   const stats = normalizeQueryResult<StudyStatRow[]>("study_stats", statsResult);
+  const importJobs = normalizeQueryResult<ImportJobRow[]>("import_jobs", importJobsResult);
 
   const syncItems = sync.data ?? [];
   const recentStats = stats.data ?? [];
+  const recentImportJobs = importJobs.data ?? [];
   const latestStat = recentStats[0] ?? null;
   const retentionValues = recentStats
     .map((item) => item.retention_rate)
@@ -101,6 +111,9 @@ async function getBaseAccountData() {
       ? Math.round(retentionValues.reduce((total, value) => total + value, 0) / retentionValues.length)
       : null,
     restoreReadyDecks: syncItems.filter((item) => Boolean(item.s3_key)).length,
+    importJobsTotal: recentImportJobs.length,
+    importJobsInFlight: recentImportJobs.filter((item) => item.status === "pending" || item.status === "queued" || item.status === "processing").length,
+    importJobsFailed: recentImportJobs.filter((item) => item.status === "failed").length,
   };
 
   return {
@@ -108,15 +121,17 @@ async function getBaseAccountData() {
     profile: profile.data,
     syncItems,
     recentStats,
+    recentImportJobs,
     latestStat,
     summary,
     integrations: {
       profileReady: !profile.missing,
       syncReady: !sync.missing,
       statsReady: !stats.missing,
+      importJobsReady: !importJobs.missing,
       storageDownloadReady: isStorageConfigured(),
       importConfigured: isImportConfigured(),
-      notes: [profile.errorMessage, sync.errorMessage, stats.errorMessage].filter(Boolean),
+      notes: [profile.errorMessage, sync.errorMessage, stats.errorMessage, importJobs.errorMessage].filter(Boolean),
     },
   };
 }
@@ -156,10 +171,36 @@ export async function getDeckDetailData(deckId: string) {
 
   const deck = base.syncItems.find((item) => String(item.id) === deckId) ?? null;
   const peerDecks = base.syncItems.filter((item) => String(item.id) !== deckId).slice(0, 4);
+  const deckImportJobs = deck
+    ? base.recentImportJobs.filter((job) => job.deck_sync_id === deck.id)
+    : [];
 
   return {
     ...base,
     deck,
+    deckImportJobs,
     peerDecks,
+  };
+}
+
+export function getImportJobTone(status: ImportJobRow["status"]) {
+  switch (status) {
+    case "completed":
+      return "success";
+    case "failed":
+    case "cancelled":
+      return "error";
+    default:
+      return "warning";
+  }
+}
+
+export function getImportJobSummary(job: ImportJobRow, syncItems: SyncRow[]) {
+  const deck = job.deck_sync_id ? syncItems.find((item) => item.id === job.deck_sync_id) : null;
+
+  return {
+    ...job,
+    deckName: deck?.deck_name ?? null,
+    statusLabel: formatImportJobStatus(job.status),
   };
 }

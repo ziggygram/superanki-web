@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, Cloud, CloudOff, Database, Download, Layers3, Shield, Upload } from "lucide-react";
 import { DeckManagementPanel } from "@/components/deck-management-panel";
+import { ImportJobHistory } from "@/components/import-job-history";
 import { formatImportLimit, getImportConfig } from "@/lib/imports";
 import { getDeckWorkspaceData } from "@/lib/decks";
 
@@ -50,7 +51,7 @@ export default async function DecksPage() {
               <p className="text-sm uppercase tracking-[0.24em] text-indigo-300">Deck workspace</p>
               <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-5xl">Decks, backups, and import handoff.</h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                This is the first real deck-centric web slice. It lists synced decks, exposes backup restore readiness, and adds authenticated import/restore entry points without papering over backend gaps.
+                This slice now goes beyond one-shot import toasts. Import requests can persist as durable job records, show queued and failed states, and accept secure worker callbacks so status survives refreshes.
               </p>
               <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-300">
                 <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">{workspace.displayName}</span>
@@ -104,9 +105,9 @@ export default async function DecksPage() {
           />
           <MetricCard
             icon={Cloud}
-            label="Study minutes, 30 days"
-            value={workspace.summary.studyMinutesLast30Days.toLocaleString("en-US")}
-            detail="Global account activity for now"
+            label="Imports in flight"
+            value={workspace.summary.importJobsInFlight.toLocaleString("en-US")}
+            detail={workspace.integrations.importJobsReady ? "Pending, queued, or processing jobs" : "Apply the import_jobs migration to enable durable history"}
           />
         </section>
 
@@ -115,13 +116,26 @@ export default async function DecksPage() {
           restoreBlockedReason="Choose a deck detail page first. Restore preparation is tied to a specific signed backup object."
         />
 
+        <ImportJobHistory
+          jobs={workspace.recentImportJobs}
+          syncItems={workspace.syncItems}
+          title="Recent account imports"
+          description={
+            workspace.integrations.importJobsReady
+              ? "Every import attempt can now create a durable server-side row before worker handoff. If a callback URL and token are configured, worker state changes can flow back into this list automatically."
+              : "The UI scaffolding is ready, but the import_jobs table does not exist yet. Run the Supabase migration to turn on durable import history and status tracking."
+          }
+          emptyTitle="No import jobs yet"
+          emptyDescription="Create your first web import job above. Once the schema is live, the queue, failures, and completions will persist here across refreshes."
+        />
+
         <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 sm:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Deck listing</p>
               <h2 className="mt-2 text-2xl font-bold">Your synced decks</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
-                Each record is a server-side view of the current `deck_sync` row. Detail pages expose the secure restore handoff and the exact blockers for missing storage or backup metadata.
+                Each record is a server-side view of the current `deck_sync` row. Detail pages now expose deck-scoped import history alongside secure restore handoff and exact blockers.
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
@@ -180,7 +194,7 @@ export default async function DecksPage() {
               </div>
               <h3 className="mt-4 text-lg font-semibold text-white">No synced decks yet</h3>
               <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-400">
-                We did not find any `deck_sync` rows for this account. As soon as a client pushes deck metadata, this page becomes the inventory view for backups and per-deck restore management.
+                We did not find any `deck_sync` rows for this account. As soon as a client pushes deck metadata, this page becomes the inventory view for backups, import history, and per-deck restore management.
               </p>
             </div>
           )}
@@ -201,14 +215,14 @@ export default async function DecksPage() {
             title="Import handoff"
             description={
               workspace.integrations.importConfigured
-                ? "Browser uploads can be forwarded to the configured import worker."
+                ? "Browser uploads can be forwarded to the configured import worker with a durable job row created first."
                 : "Import buttons stay blocked until a trusted import API is configured."
             }
           />
           <StatusCard
             icon={Cloud}
             title="Current limitation"
-            description="Per-deck study history is not in the schema yet, so detail pages currently show deck metadata plus account-level study stats."
+            description="Worker callbacks are scaffolded, but actual progress granularity still depends on the upstream import worker posting status updates back to the web app."
           />
         </section>
       </div>

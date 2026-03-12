@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Cloud, Download, FolderArchive, Shield, Upload } from "lucide-react";
 import { DeckManagementPanel } from "@/components/deck-management-panel";
+import { ImportJobHistory } from "@/components/import-job-history";
 import { getDeckDetailData } from "@/lib/decks";
 
 function formatDate(value: string | null | undefined, withTime = true) {
@@ -56,7 +57,7 @@ export default async function DeckDetailPage({
               <p className="mt-5 text-sm uppercase tracking-[0.24em] text-indigo-300">Deck detail</p>
               <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-5xl">{detail.deck.deck_name}</h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                This page is the per-deck operational view for backup status, secure restore preparation, and import handoff. It is intentionally direct about what is live versus what still depends on backend work.
+                This is now the per-deck operational view for backup status, secure restore preparation, and linked import job history. It stays explicit about what is live versus what still depends on backend work.
               </p>
               <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-300">
                 <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
@@ -89,7 +90,7 @@ export default async function DeckDetailPage({
           <MetricCard icon={FolderArchive} label="Cards tracked" value={(detail.deck.card_count ?? 0).toLocaleString("en-US")} />
           <MetricCard icon={Cloud} label="Last synced" value={formatDate(detail.deck.last_synced_at)} />
           <MetricCard icon={Shield} label="Average retention" value={formatRetention(detail.summary.averageRetention)} />
-          <MetricCard icon={Download} label="Backup object" value={detail.deck.s3_key ? "Present" : "Missing"} />
+          <MetricCard icon={Download} label="Deck imports" value={detail.deckImportJobs.length.toLocaleString("en-US")} />
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -105,7 +106,7 @@ export default async function DeckDetailPage({
             <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-sm leading-6 text-slate-400">
               <p className="font-semibold text-slate-200">Current schema limitation</p>
               <p className="mt-2">
-                `study_stats` is account-level, not per-deck. Until a deck-scoped stats table exists, this detail page combines exact deck backup metadata with account-level study rollups.
+                `study_stats` is account-level, not per-deck. Import job history is now deck-linked when requests start from this page, but actual imported deck contents still depend on the worker pipeline.
               </p>
             </div>
           </div>
@@ -129,6 +130,20 @@ export default async function DeckDetailPage({
           importBlockedReason={importBlockedReason}
         />
 
+        <ImportJobHistory
+          jobs={detail.deckImportJobs}
+          syncItems={detail.syncItems}
+          compact
+          title={`Recent imports for ${detail.deck.deck_name}`}
+          description={
+            detail.integrations.importJobsReady
+              ? "Jobs created from this deck page are linked back to the current deck_sync row. Worker callbacks can update queued, processing, completed, and failed states without depending on client memory."
+              : "This page is ready to show deck-linked import jobs, but the import_jobs table migration has not been applied yet."
+          }
+          emptyTitle="No deck-linked import jobs yet"
+          emptyDescription="Create an import from this page to bind the request to this deck row once the import_jobs schema is available."
+        />
+
         <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
             <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Restore notes</p>
@@ -137,7 +152,7 @@ export default async function DeckDetailPage({
               <Bullet text="Restore preparation is authenticated and checks the deck row belongs to the current user before generating a signed URL." />
               <Bullet text="If the backup row lacks `s3_key`, the API returns a conflict instead of a broken link." />
               <Bullet text="If object-storage signing env vars are missing, the UI and API both surface the exact configuration gap." />
-              <Bullet text="Browser import is intentionally treated as a handoff to a trusted worker, not as local parsing in the client." />
+              <Bullet text="Browser import is treated as a handoff to a trusted worker, with durable job status stored server-side before the file leaves the request." />
             </div>
           </div>
 
@@ -169,7 +184,7 @@ export default async function DeckDetailPage({
             <div>
               <p className="font-semibold text-indigo-200">Next backend hook worth building</p>
               <p className="mt-1 text-indigo-100/90">
-                Add a deck-scoped import job table and worker callback so these management panels can show durable job history instead of transient response messages.
+                Teach the upstream import worker to post granular progress and imported deck metadata back into the callback route, then connect completed jobs to newly created deck rows automatically.
               </p>
             </div>
           </div>

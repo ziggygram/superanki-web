@@ -117,7 +117,52 @@ CREATE POLICY "users_read_own_feedback" ON feedback
   FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
 
+-- 6. Import jobs (durable import handoff + worker status)
+CREATE TABLE IF NOT EXISTS import_jobs (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  deck_sync_id BIGINT REFERENCES deck_sync(id) ON DELETE SET NULL,
+  source_filename TEXT NOT NULL,
+  file_size_bytes BIGINT NOT NULL CHECK (file_size_bytes > 0),
+  file_content_type TEXT,
+  source_extension TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'queued', 'processing', 'completed', 'failed', 'cancelled')),
+  worker_job_id TEXT,
+  worker_status TEXT,
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ
+);
+
+ALTER TABLE import_jobs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "users_read_own_import_jobs" ON import_jobs
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "users_insert_own_import_jobs" ON import_jobs
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "users_update_own_import_jobs" ON import_jobs
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE OR REPLACE FUNCTION set_import_jobs_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS import_jobs_set_updated_at ON import_jobs;
+CREATE TRIGGER import_jobs_set_updated_at
+  BEFORE UPDATE ON import_jobs
+  FOR EACH ROW EXECUTE FUNCTION set_import_jobs_updated_at();
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_deck_sync_user ON deck_sync(user_id);
 CREATE INDEX IF NOT EXISTS idx_study_stats_user_date ON study_stats(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_waitlist_email ON waitlist(email);
+CREATE INDEX IF NOT EXISTS idx_import_jobs_user_created ON import_jobs(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_import_jobs_deck_created ON import_jobs(deck_sync_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_import_jobs_worker_job_id ON import_jobs(worker_job_id);
