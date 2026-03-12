@@ -10,22 +10,36 @@ function normalizeRedirect(path: string | null) {
   return path;
 }
 
+async function resolveSiteUrl() {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, "");
+  }
+
+  const origin = (await headers()).get("origin")?.trim();
+  if (origin) {
+    return origin.replace(/\/$/, "");
+  }
+
+  return "https://www.superanki.app";
+}
+
 type AuthActionState = { error?: string; success?: string };
 
 export async function signInWithMagicLink(_: AuthActionState, formData: FormData) {
   const supabase = await createClient();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const next = normalizeRedirect(String(formData.get("next") || "/account"));
-  const origin = (await headers()).get("origin");
+  const siteUrl = await resolveSiteUrl();
 
-  if (!email || !origin) {
-    return { error: "Missing email or origin." };
+  if (!email) {
+    return { error: "Missing email." };
   }
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });
 
@@ -59,7 +73,7 @@ export async function signUpWithPassword(_: AuthActionState, formData: FormData)
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const next = normalizeRedirect(String(formData.get("next") || "/account"));
-  const origin = (await headers()).get("origin");
+  const siteUrl = await resolveSiteUrl();
 
   if (!email || !password) {
     return { error: "Email and password are required." };
@@ -68,11 +82,9 @@ export async function signUpWithPassword(_: AuthActionState, formData: FormData)
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: origin
-      ? {
-          emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
-        }
-      : undefined,
+    options: {
+      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
   });
 
   if (error) {
