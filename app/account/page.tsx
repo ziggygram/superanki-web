@@ -83,6 +83,12 @@ export default async function AccountPage() {
 
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
               <Link
+                href="/decks"
+                className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 px-5 py-3 font-semibold text-white hover:bg-indigo-500"
+              >
+                Open deck workspace
+              </Link>
+              <Link
                 href="/"
                 className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-slate-200 hover:bg-white/10"
               >
@@ -91,7 +97,7 @@ export default async function AccountPage() {
               <form action={signOut}>
                 <button
                   type="submit"
-                  className="inline-flex w-full items-center justify-center rounded-2xl bg-indigo-600 px-5 py-3 font-semibold text-white hover:bg-indigo-500"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-slate-100 hover:bg-white/10"
                 >
                   Sign out
                 </button>
@@ -115,8 +121,8 @@ export default async function AccountPage() {
           />
           <MetricCard
             icon={Activity}
-            label="Reviews, 14 days"
-            value={summary.cardsReviewedLast14Days.toLocaleString("en-US")}
+            label="Reviews, 30 days"
+            value={summary.cardsReviewedLast30Days.toLocaleString("en-US")}
             detail={recentStats.length ? "Pulled from study_stats" : "No study_stats rows yet"}
           />
           <MetricCard
@@ -184,6 +190,12 @@ export default async function AccountPage() {
                       </div>
 
                       <div className="flex flex-col gap-3 lg:w-52">
+                        <Link
+                          href={`/decks/${item.id}`}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-500"
+                        >
+                          Open detail
+                        </Link>
                         <a
                           href={`/api/account/backups/${item.id}/download`}
                           className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
@@ -281,14 +293,14 @@ export default async function AccountPage() {
         <section className="rounded-3xl border border-indigo-400/20 bg-indigo-400/10 p-6 text-sm leading-6 text-indigo-100">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-semibold text-indigo-200">Next backend hookup</p>
+              <p className="font-semibold text-indigo-200">Next product slice now live</p>
               <p className="mt-1 text-indigo-100/90">
-                Point the iOS sync pipeline at the <code className="rounded bg-black/20 px-1 py-0.5">deck_sync</code> and <code className="rounded bg-black/20 px-1 py-0.5">study_stats</code> tables, then add device-side import and restore handling for the signed backup downloads shipped here.
+                The deck workspace ships at <code className="rounded bg-black/20 px-1 py-0.5">/decks</code> with per-deck detail pages, authenticated restore preparation, and explicit import blocking until a trusted import worker is configured.
               </p>
             </div>
             <div className="inline-flex items-center gap-2 text-indigo-200">
               <ArrowUpRight className="h-4 w-4" />
-              First slice shipped cleanly
+              Deck slice shipped
             </div>
           </div>
         </section>
