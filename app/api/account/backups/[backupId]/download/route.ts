@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildPresignedDownloadUrl, inferBackupFilename, isStorageConfigured } from "@/lib/object-storage";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
@@ -17,7 +18,7 @@ export async function GET(
 
   const { data: backup, error } = await supabase
     .from("deck_sync")
-    .select("id, user_id, deck_name, s3_key")
+    .select("id, user_id, deck_name, s3_key, last_synced_at, checksum")
     .eq("id", backupId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -47,12 +48,12 @@ export async function GET(
     );
   }
 
-  if (!process.env.SUPERANKI_STORAGE_SIGNING_KEY) {
+  if (!isStorageConfigured()) {
     return NextResponse.json(
       {
         error: "Private backup download signing is not configured on the web app yet.",
         nextStep:
-          "Add server-side Hetzner S3 signing here using deck_sync.s3_key. Keep credentials server-only and return either a short-lived signed URL or stream the object through this route.",
+          "Set SUPERANKI_STORAGE_ENDPOINT, SUPERANKI_STORAGE_BUCKET, SUPERANKI_STORAGE_REGION, SUPERANKI_STORAGE_ACCESS_KEY_ID, and SUPERANKI_STORAGE_SECRET_ACCESS_KEY in the deployment environment.",
         backup: {
           id: backup.id,
           deckName: backup.deck_name,
@@ -63,12 +64,26 @@ export async function GET(
     );
   }
 
-  return NextResponse.json(
-    {
-      error: "Download signing is not implemented yet.",
-      nextStep:
-        "Replace this response with real Hetzner S3 request signing once storage credentials are wired into the deployment environment.",
-    },
-    { status: 501 },
-  );
+  const downloadFilename = inferBackupFilename(backup.deck_name, backup.s3_key);
+  const signedUrl = buildPresignedDownloadUrl({
+    key: backup.s3_key,
+    downloadFilename,
+    expiresInSeconds: 60,
+  });
+
+  const response = NextResponse.redirect(signedUrl, 307);
+  response.headers.set("Cache-Control", "no-store, max-age=0");
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  response.headers.set("Content-Disposition", `attachment; filename="${downloadFilename}"`);
+  response.headers.set("X-SuperAnki-Backup-Id", String(backup.id));
+
+  if (backup.last_synced_at) {
+    response.headers.set("X-SuperAnki-Last-Synced-At", backup.last_synced_at);
+  }
+
+  if (backup.checksum) {
+    response.headers.set("X-SuperAnki-Checksum", backup.checksum);
+  }
+
+  return response;
 }

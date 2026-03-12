@@ -1,3 +1,4 @@
+import { isStorageConfigured } from "@/lib/object-storage";
 import { createClient } from "@/lib/supabase/server";
 
 type SyncRow = {
@@ -112,7 +113,7 @@ export async function getAccountDashboardData() {
       profileReady: !profile.missing,
       syncReady: !sync.missing,
       statsReady: !stats.missing,
-      storageDownloadReady: Boolean(process.env.SUPERANKI_STORAGE_SIGNING_KEY),
+      storageDownloadReady: isStorageConfigured(),
       notes: [profile.errorMessage, sync.errorMessage, stats.errorMessage].filter(Boolean),
     },
   };

@@ -196,7 +196,7 @@ export default async function AccountPage() {
                           Request backup
                         </a>
                         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-xs leading-5 text-slate-400">
-                          Downloads are gated through a server route so object storage access can stay private.
+                          Downloads are gated through a server route and redirected to a short-lived signed URL. Your storage credentials stay server-only.
                         </div>
                       </div>
                     </div>
@@ -258,7 +258,7 @@ export default async function AccountPage() {
                     ))}
                     {!integrations.storageDownloadReady ? (
                       <li>
-                        Set <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_STORAGE_SIGNING_KEY</code> and finish the signing implementation in the download route to enable one-click private backup downloads.
+                        Set <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_STORAGE_ENDPOINT</code>, <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_STORAGE_BUCKET</code>, <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_STORAGE_REGION</code>, <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_STORAGE_ACCESS_KEY_ID</code>, and <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_STORAGE_SECRET_ACCESS_KEY</code> to enable one-click private backup downloads.
                       </li>
                     ) : null}
                   </ul>
@@ -283,7 +283,7 @@ export default async function AccountPage() {
             <div>
               <p className="font-semibold text-indigo-200">Next backend hookup</p>
               <p className="mt-1 text-indigo-100/90">
-                Point the iOS sync pipeline at the <code className="rounded bg-black/20 px-1 py-0.5">deck_sync</code> and <code className="rounded bg-black/20 px-1 py-0.5">study_stats</code> tables, then finish private object-storage URL signing inside the download route.
+                Point the iOS sync pipeline at the <code className="rounded bg-black/20 px-1 py-0.5">deck_sync</code> and <code className="rounded bg-black/20 px-1 py-0.5">study_stats</code> tables, then add device-side import and restore handling for the signed backup downloads shipped here.
               </p>
             </div>
             <div className="inline-flex items-center gap-2 text-indigo-200">
