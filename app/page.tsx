@@ -112,6 +112,9 @@ export default function Home() {
             <a href="#features" className="hidden text-sm text-slate-300 sm:block">
               Features
             </a>
+            <a href="/agents" className="hidden text-sm text-slate-300 sm:block">
+              Agents
+            </a>
             <a href="/auth" className="hidden text-sm text-slate-300 sm:block">
               Sign in
             </a>

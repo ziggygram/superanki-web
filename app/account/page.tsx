@@ -89,6 +89,12 @@ export default async function AccountPage() {
                 Open deck workspace
               </Link>
               <Link
+                href="/agents"
+                className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-slate-200 hover:bg-white/10"
+              >
+                View agents
+              </Link>
+              <Link
                 href="/"
                 className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-slate-200 hover:bg-white/10"
               >

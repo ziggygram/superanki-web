@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Cloud, Download, FolderArchive, Shield, Upload } from "lucide-react";
+import { ArrowLeft, Bot, Cloud, Download, FolderArchive, Shield, Upload } from "lucide-react";
 import { DeckManagementPanel } from "@/components/deck-management-panel";
 import { ImportJobHistory } from "@/components/import-job-history";
 import { getDeckDetailData } from "@/lib/decks";
@@ -69,6 +69,13 @@ export default async function DeckDetailPage({
                 <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
                   {detail.deck.card_count ?? 0} cards tracked
                 </span>
+                <Link
+                  href={`/decks/${detail.deck.id}/gpt`}
+                  className="inline-flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-400/10 px-4 py-2 font-medium text-indigo-100 hover:bg-indigo-400/15"
+                >
+                  <Bot className="h-4 w-4" />
+                  GPT setup
+                </Link>
               </div>
             </div>
 
