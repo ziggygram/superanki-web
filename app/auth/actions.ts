@@ -24,7 +24,7 @@ async function resolveSiteUrl() {
   return "https://www.superanki.app";
 }
 
-type AuthActionState = { error?: string; success?: string };
+export type AuthActionState = { error?: string; success?: string };
 
 export async function signInWithMagicLink(_: AuthActionState, formData: FormData) {
   const supabase = await createClient();
@@ -96,6 +96,26 @@ export async function signUpWithPassword(_: AuthActionState, formData: FormData)
   }
 
   return { success: "Account created. Check your email if confirmation is required, or sign in with your password." };
+}
+
+export async function requestPasswordReset(_: AuthActionState, formData: FormData) {
+  const supabase = await createClient();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const siteUrl = await resolveSiteUrl();
+
+  if (!email) {
+    return { error: "Enter your email first." };
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteUrl}/auth`,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: "Password reset email sent. Check your inbox." };
 }
 
 export async function signOut() {

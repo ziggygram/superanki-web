@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { signInWithMagicLink, signInWithPassword, signUpWithPassword } from "./actions";
+import { requestPasswordReset, signInWithMagicLink, signInWithPassword, signUpWithPassword, type AuthActionState } from "./actions";
 
 type Mode = "signin" | "signup" | "magic";
-const initialState: { error?: string; success?: string } = {};
+const initialState: AuthActionState = {};
 
 export function AuthForm({ next }: { next: string }) {
   const [mode, setMode] = useState<Mode>("signin");
@@ -98,6 +98,29 @@ export function AuthForm({ next }: { next: string }) {
                 ? "Create account"
                 : "Sign in with password"}
         </button>
+
+        {mode === "signin" ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={async () => {
+              const form = new FormData();
+              const emailInput = document.getElementById("email") as HTMLInputElement | null;
+              if (emailInput?.value) {
+                form.set("email", emailInput.value);
+              }
+              const result = await requestPasswordReset(initialState, form);
+              if (result.error) {
+                alert(result.error);
+              } else if (result.success) {
+                alert(result.success);
+              }
+            }}
+            className="text-sm text-indigo-300 hover:text-indigo-200"
+          >
+            Forgot password?
+          </button>
+        ) : null}
 
         {state.error ? <p className="text-sm text-red-400">{state.error}</p> : null}
         {state.success ? <p className="text-sm text-emerald-400">{state.success}</p> : null}
