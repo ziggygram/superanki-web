@@ -112,6 +112,9 @@ export default function Home() {
             <a href="#features" className="hidden text-sm text-slate-300 sm:block">
               Features
             </a>
+            <a href="/auth" className="hidden text-sm text-slate-300 sm:block">
+              Sign in
+            </a>
             <a
               href="https://testflight.apple.com/join/EpjSem6N"
               target="_blank"
