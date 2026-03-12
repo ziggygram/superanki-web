@@ -166,3 +166,43 @@ CREATE INDEX IF NOT EXISTS idx_waitlist_email ON waitlist(email);
 CREATE INDEX IF NOT EXISTS idx_import_jobs_user_created ON import_jobs(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_import_jobs_deck_created ON import_jobs(deck_sync_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_import_jobs_worker_job_id ON import_jobs(worker_job_id);
+
+-- 7. Deck cards written from GPT / web flows
+CREATE TABLE IF NOT EXISTS deck_cards (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  deck_sync_id BIGINT NOT NULL REFERENCES deck_sync(id) ON DELETE CASCADE,
+  front TEXT NOT NULL,
+  back TEXT NOT NULL,
+  notes TEXT,
+  tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+  source TEXT NOT NULL DEFAULT 'web',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE deck_cards ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "users_read_own_deck_cards" ON deck_cards
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "users_insert_own_deck_cards" ON deck_cards
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "users_update_own_deck_cards" ON deck_cards
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE OR REPLACE FUNCTION set_deck_cards_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS deck_cards_set_updated_at ON deck_cards;
+CREATE TRIGGER deck_cards_set_updated_at
+  BEFORE UPDATE ON deck_cards
+  FOR EACH ROW EXECUTE FUNCTION set_deck_cards_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_deck_cards_user_deck_created ON deck_cards(user_id, deck_sync_id, created_at DESC);

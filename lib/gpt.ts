@@ -17,6 +17,14 @@ type GptForwardConfig = {
   maxCardsPerRequest: number;
 };
 
+export type DirectDeckCardInsert = {
+  front: string;
+  back: string;
+  notes: string | null;
+  tags: string[];
+  source: string;
+};
+
 function base64UrlEncode(input: string | Buffer) {
   return Buffer.from(input)
     .toString("base64")
@@ -61,7 +69,35 @@ export function isGptTokenIssuanceReady() {
 }
 
 export function isGptForwardingConfigured() {
-  return Boolean(getGptForwardConfig());
+  return true;
+}
+
+export async function insertDeckCardsDirect(params: {
+  userId: string;
+  deckSyncId: number;
+  cards: DirectDeckCardInsert[];
+}) {
+  const supabase = await createClient();
+  const rows = params.cards.map((card) => ({
+    user_id: params.userId,
+    deck_sync_id: params.deckSyncId,
+    front: card.front,
+    back: card.back,
+    notes: card.notes,
+    tags: card.tags,
+    source: card.source,
+  }));
+
+  const { data, error } = await supabase
+    .from("deck_cards")
+    .insert(rows)
+    .select("id, front, back, source, created_at");
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
 }
 
 export function signDeckAccessToken(payload: Omit<GptDeckTokenPayload, "exp"> & { exp?: number }) {

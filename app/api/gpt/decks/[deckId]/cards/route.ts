@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getGptForwardConfig, isGptForwardingConfigured, resolveDeckAccessFromRequest } from "@/lib/gpt";
+import { insertDeckCardsDirect, resolveDeckAccessFromRequest } from "@/lib/gpt";
 
 export const runtime = "nodejs";
 
@@ -67,86 +67,51 @@ export async function POST(request: Request, { params }: { params: Promise<{ dec
     );
   }
 
-  const config = getGptForwardConfig();
   const requestedBy = body?.source?.trim() || "superanki-gpt";
+  const maxCardsPerRequest = 50;
 
-  if (!config || !isGptForwardingConfigured()) {
-    return NextResponse.json(
-      {
-        accepted: false,
-        error: "GPT deck writes are not wired to a trusted backend yet.",
-        nextStep:
-          "Set SUPERANKI_GPT_API_URL and SUPERANKI_GPT_API_TOKEN to forward validated GPT card batches into your deck-writing service.",
-        received: {
-          deckSyncId: access.deckSyncId,
-          userId: access.userId,
-          authMode: access.authMode,
-          cards: cards.length,
-        },
-      },
-      { status: 501, headers: { "Cache-Control": "no-store" } },
-    );
-  }
-
-  if (cards.length > config.maxCardsPerRequest) {
+  if (cards.length > maxCardsPerRequest) {
     return NextResponse.json(
       {
         error: "Too many cards in one request.",
-        nextStep: `Keep each GPT write under ${config.maxCardsPerRequest} cards.`,
+        nextStep: `Keep each GPT write under ${maxCardsPerRequest} cards.`,
       },
       { status: 413, headers: { "Cache-Control": "no-store" } },
     );
   }
 
-  let upstreamResponse: Response;
-
   try {
-    upstreamResponse = await fetch(config.apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.apiToken}`,
-      },
-      body: JSON.stringify({
-        source: requestedBy,
-        userId: access.userId,
-        userEmail: access.email,
-        deckSyncId: access.deckSyncId,
-        cards,
-      }),
-      cache: "no-store",
-    });
-  } catch {
-    return NextResponse.json(
-      {
-        error: "The configured GPT card service did not respond.",
-        nextStep: "Verify SUPERANKI_GPT_API_URL, networking, and upstream health.",
-      },
-      { status: 502, headers: { "Cache-Control": "no-store" } },
-    );
-  }
-
-  const payload = (await upstreamResponse.json().catch(() => null)) as Record<string, unknown> | null;
-
-  if (!upstreamResponse.ok) {
-    return NextResponse.json(
-      {
-        error: "The GPT card service rejected the request.",
-        upstreamStatus: upstreamResponse.status,
-        upstream: payload,
-      },
-      { status: 502, headers: { "Cache-Control": "no-store" } },
-    );
-  }
-
-  return NextResponse.json(
-    {
-      accepted: true,
-      message: "Cards forwarded to the deck-writing service.",
-      upstream: payload,
+    const inserted = await insertDeckCardsDirect({
+      userId: access.userId,
       deckSyncId: access.deckSyncId,
-      receivedCards: cards.length,
-    },
-    { status: 202, headers: { "Cache-Control": "no-store" } },
-  );
+      cards: cards.map((card) => ({
+        front: card.front,
+        back: card.back,
+        notes: card.notes,
+        tags: card.tags,
+        source: requestedBy,
+      })),
+    });
+
+    return NextResponse.json(
+      {
+        accepted: true,
+        message: "Cards saved to the deck.",
+        deckSyncId: access.deckSyncId,
+        receivedCards: cards.length,
+        insertedCount: inserted.length,
+        inserted,
+      },
+      { status: 201, headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "Failed to save GPT cards.",
+        details: error instanceof Error ? error.message : "Unknown error",
+        nextStep: "Run the latest Supabase migration so deck_cards exists and is writable.",
+      },
+      { status: 500, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }

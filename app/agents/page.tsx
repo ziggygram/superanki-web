@@ -147,7 +147,7 @@ export default function AgentsPage() {
                 <p className="font-semibold text-amber-200">Required env vars</p>
                 <ul className="mt-2 list-disc space-y-1 pl-5">
                   {!tokenReady ? <li>Set <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_GPT_SHARED_SECRET</code> for short-lived deck token issuance.</li> : null}
-                  {!forwardingReady ? <li>Set <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_GPT_API_URL</code> and <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_GPT_API_TOKEN</code> to forward validated card batches to your deck-writing backend.</li> : null}
+                  <li>Apply the latest Supabase migration so the <code className="rounded bg-black/20 px-1 py-0.5">deck_cards</code> table exists for direct GPT card writes.</li>
                 </ul>
               </div>
             ) : null}

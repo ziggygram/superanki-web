@@ -57,7 +57,7 @@ export function GptDeckPanel({ deckId, deckName, tokenReady, forwardingReady }: 
         title: forwardingReady ? "Deck token ready" : "Deck token ready, forwarding still blocked",
         description: forwardingReady
           ? payload.nextStep || "Use this as the Bearer token in your GPT action config."
-          : "The deck token is real and scoped correctly, but writes will stay blocked until the GPT forwarding backend is configured.",
+          : "The deck token is real and scoped correctly. GPT writes save directly into the deck_cards table once the latest Supabase migration is applied.",
         token: payload.token,
         actionUrl: payload.actionUrl,
         openApiUrl: payload.openApiUrl,
@@ -140,7 +140,7 @@ export function GptDeckPanel({ deckId, deckName, tokenReady, forwardingReady }: 
 
         {!forwardingReady ? (
           <span className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
-            Writes stay blocked until SUPERANKI_GPT_API_URL and SUPERANKI_GPT_API_TOKEN are configured.
+            Direct GPT writes use the deck_cards table. Apply the latest Supabase migration if this is not live yet.
           </span>
         ) : null}
       </div>
