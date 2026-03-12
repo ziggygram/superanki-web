@@ -29,7 +29,7 @@ export default async function AuthPage({
         </div>
         <h1 className="text-3xl font-bold">Sign in securely</h1>
         <p className="mt-3 text-slate-400">
-          We’ll email you a magic link. No password to leak, no sketchy client-side session hacks.
+          Use password auth or a magic link. Password auth stays available so the web app does not depend on email links alone.
         </p>
         <AuthForm next={next} />
       </div>
