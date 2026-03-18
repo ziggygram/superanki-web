@@ -36,8 +36,6 @@ export default async function DeckGptPage({ params }: { params: Promise<{ deckId
                 This is the logged-in surface for GPT actions and other deck-scoped agents. Tokens created here are tied to one deck and expire automatically.
               </p>
               <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-300">
-                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">Deck row {detail.deck.id}</span>
-                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">Deck ID {detail.deck.deck_id}</span>
                 <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">{detail.deck.card_count ?? 0} cards tracked</span>
               </div>
             </div>
@@ -62,7 +60,7 @@ export default async function DeckGptPage({ params }: { params: Promise<{ deckId
               <pre className="overflow-x-auto whitespace-pre-wrap">{`Use the SuperAnki action only when the user explicitly asks to add flashcards.
 Always send cards as concise front/back pairs.
 Do not invent deck ids.
-If the API returns a configuration blocker, explain that SuperAnki still needs backend wiring for GPT deck writes.`}</pre>
+If the API cannot complete a request, explain the problem briefly and ask the user to try again later.`}</pre>
             </div>
           </div>
 
@@ -71,7 +69,7 @@ If the API returns a configuration blocker, explain that SuperAnki still needs b
             <h2 className="mt-3 text-2xl font-bold">What this flow protects</h2>
             <ul className="mt-5 space-y-3 text-sm leading-6 text-slate-300">
               <li className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3">Tokens are generated only from an authenticated web session.</li>
-              <li className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3">Each token is scoped to one deck_sync row, not the whole account.</li>
+              <li className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3">Each token is scoped to one deck, not your whole account.</li>
               <li className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3">The action endpoint validates required card fields before any upstream handoff.</li>
               <li className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3">If the backend writer is missing, requests fail explicitly instead of pretending cards were saved.</li>
             </ul>
@@ -91,7 +89,7 @@ function StatusTile({ icon: Icon, label, ok }: { icon: typeof Shield; label: str
         </div>
         <div>
           <p className="text-sm text-slate-400">{label}</p>
-          <p className={`mt-1 text-sm font-semibold ${ok ? "text-emerald-300" : "text-amber-300"}`}>{ok ? "Ready" : "Needs wiring"}</p>
+          <p className={`mt-1 text-sm font-semibold ${ok ? "text-emerald-300" : "text-amber-300"}`}>{ok ? "Available" : "Unavailable"}</p>
         </div>
       </div>
     </div>

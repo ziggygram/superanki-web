@@ -26,23 +26,22 @@ export async function GET(
   if (error) {
     return NextResponse.json(
       {
-        error: error.message,
-        nextStep:
-          "Ensure the deck_sync table exists and this user has access to the requested backup row.",
+        error: "We couldn’t open this backup right now.",
+        nextStep: "Refresh the page and try again.",
       },
       { status: 500 },
     );
   }
 
   if (!backup) {
-    return NextResponse.json({ error: "Backup not found" }, { status: 404 });
+    return NextResponse.json({ error: "This backup is no longer available." }, { status: 404 });
   }
 
   if (!backup.s3_key) {
     return NextResponse.json(
       {
-        error: "This backup row does not have an object-storage key yet.",
-        nextStep: "Write the generated object key into deck_sync.s3_key during the iOS upload flow.",
+        error: "This backup is still being prepared.",
+        nextStep: "Try again after the latest sync finishes.",
       },
       { status: 409 },
     );
@@ -51,14 +50,8 @@ export async function GET(
   if (!isStorageConfigured()) {
     return NextResponse.json(
       {
-        error: "Private backup download signing is not configured on the web app yet.",
-        nextStep:
-          "Set SUPERANKI_STORAGE_ENDPOINT, SUPERANKI_STORAGE_BUCKET, SUPERANKI_STORAGE_REGION, SUPERANKI_STORAGE_ACCESS_KEY_ID, and SUPERANKI_STORAGE_SECRET_ACCESS_KEY in the deployment environment.",
-        backup: {
-          id: backup.id,
-          deckName: backup.deck_name,
-          s3Key: backup.s3_key,
-        },
+        error: "Backup downloads are temporarily unavailable.",
+        nextStep: "Please try again later.",
       },
       { status: 501 },
     );

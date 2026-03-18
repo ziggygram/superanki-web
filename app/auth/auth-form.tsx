@@ -8,6 +8,8 @@ const initialState: AuthActionState = {};
 
 export function AuthForm({ next }: { next: string }) {
   const [mode, setMode] = useState<Mode>("signin");
+  const [resetState, setResetState] = useState<AuthActionState>({});
+  const [resetPending, setResetPending] = useState(false);
   const action = useMemo(() => {
     switch (mode) {
       case "signup":
@@ -102,28 +104,29 @@ export function AuthForm({ next }: { next: string }) {
         {mode === "signin" ? (
           <button
             type="button"
-            disabled={pending}
+            disabled={pending || resetPending}
             onClick={async () => {
+              setResetPending(true);
+              setResetState({});
               const form = new FormData();
               const emailInput = document.getElementById("email") as HTMLInputElement | null;
               if (emailInput?.value) {
                 form.set("email", emailInput.value);
               }
               const result = await requestPasswordReset(initialState, form);
-              if (result.error) {
-                alert(result.error);
-              } else if (result.success) {
-                alert(result.success);
-              }
+              setResetState(result);
+              setResetPending(false);
             }}
             className="text-sm text-indigo-300 hover:text-indigo-200"
           >
-            Forgot password?
+            {resetPending ? "Sending reset email..." : "Forgot password?"}
           </button>
         ) : null}
 
         {state.error ? <p className="text-sm text-red-400">{state.error}</p> : null}
         {state.success ? <p className="text-sm text-emerald-400">{state.success}</p> : null}
+        {resetState.error ? <p className="text-sm text-red-400">{resetState.error}</p> : null}
+        {resetState.success ? <p className="text-sm text-emerald-400">{resetState.success}</p> : null}
       </form>
     </div>
   );

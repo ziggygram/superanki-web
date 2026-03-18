@@ -35,14 +35,14 @@ export default async function DeckDetailPage({
   }
 
   const restoreBlockedReason = !detail.deck.s3_key
-    ? "This deck has metadata in deck_sync, but no object-storage key yet. The upload client needs to write deck_sync.s3_key before restore can be prepared."
+    ? "This backup is still being prepared. Try again after the latest sync finishes."
     : !detail.integrations.storageDownloadReady
-      ? "Storage signing is not configured on the web app yet. Set SUPERANKI_STORAGE_ENDPOINT, SUPERANKI_STORAGE_BUCKET, SUPERANKI_STORAGE_REGION, SUPERANKI_STORAGE_ACCESS_KEY_ID, and SUPERANKI_STORAGE_SECRET_ACCESS_KEY."
+      ? "Backup downloads are temporarily unavailable."
       : null;
 
   const importBlockedReason = detail.integrations.importConfigured
     ? null
-    : "Set SUPERANKI_IMPORT_API_URL and SUPERANKI_IMPORT_API_TOKEN to forward browser uploads to a trusted import worker.";
+    : "Web imports are temporarily unavailable right now.";
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12 text-white sm:py-16">
@@ -57,15 +57,9 @@ export default async function DeckDetailPage({
               <p className="mt-5 text-sm uppercase tracking-[0.24em] text-indigo-300">Deck detail</p>
               <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-5xl">{detail.deck.deck_name}</h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                This is now the per-deck operational view for backup status, secure restore preparation, and linked import job history. It stays explicit about what is live versus what still depends on backend work.
+                Review this deck’s latest backup, recent imports, and restore options in one place.
               </p>
               <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-300">
-                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                  Backup row {detail.deck.id}
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                  Deck ID {detail.deck.deck_id}
-                </span>
                 <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
                   {detail.deck.card_count ?? 0} cards tracked
                 </span>
@@ -86,8 +80,8 @@ export default async function DeckDetailPage({
               </p>
               <p className="mt-2 leading-6">
                 {detail.deck.s3_key
-                  ? "This deck has a storage key and can be handed off once server-side signing is configured."
-                  : "The deck row exists, but the storage object key has not been synced yet."}
+                  ? "This deck has a recent backup available."
+                  : "A fresh backup is still being prepared for this deck."}
               </p>
             </div>
           </div>
@@ -103,18 +97,12 @@ export default async function DeckDetailPage({
         <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6 sm:p-8">
             <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Deck metadata</p>
-            <h2 className="mt-2 text-2xl font-bold">What the server knows right now</h2>
+            <h2 className="mt-2 text-2xl font-bold">Deck snapshot</h2>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <InfoCard label="Deck name" value={detail.deck.deck_name} />
-              <InfoCard label="Internal deck ID" value={detail.deck.deck_id} mono />
               <InfoCard label="Last synced at" value={formatDate(detail.deck.last_synced_at)} />
-              <InfoCard label="Checksum" value={detail.deck.checksum ?? "Not available yet"} mono />
-            </div>
-            <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-sm leading-6 text-slate-400">
-              <p className="font-semibold text-slate-200">Current schema limitation</p>
-              <p className="mt-2">
-                `study_stats` is account-level, not per-deck. Import job history is now deck-linked when requests start from this page, but actual imported deck contents still depend on the worker pipeline.
-              </p>
+              <InfoCard label="Cards tracked" value={(detail.deck.card_count ?? 0).toLocaleString("en-US")} />
+              <InfoCard label="Backup status" value={detail.deck.s3_key ? "Available" : "Preparing"} />
             </div>
           </div>
 
@@ -122,7 +110,7 @@ export default async function DeckDetailPage({
             <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Account study context</p>
             <h2 className="mt-2 text-2xl font-bold">Latest synced activity</h2>
             <div className="mt-5 space-y-3">
-              <ContextRow label="Latest study day" value={detail.latestStat ? formatDate(detail.latestStat.date, false) : "No study_stats rows yet"} />
+              <ContextRow label="Latest study day" value={detail.latestStat ? formatDate(detail.latestStat.date, false) : "No recent study activity yet"} />
               <ContextRow label="Reviews, 30 days" value={detail.summary.cardsReviewedLast30Days.toLocaleString("en-US")} />
               <ContextRow label="Study minutes, 30 days" value={detail.summary.studyMinutesLast30Days.toLocaleString("en-US")} />
               <ContextRow label="Average retention" value={formatRetention(detail.summary.averageRetention)} />
@@ -144,22 +132,22 @@ export default async function DeckDetailPage({
           title={`Recent imports for ${detail.deck.deck_name}`}
           description={
             detail.integrations.importJobsReady
-              ? "Jobs created from this deck page are linked back to the current deck_sync row. Worker callbacks can update queued, processing, completed, and failed states without depending on client memory."
-              : "This page is ready to show deck-linked import jobs, but the import_jobs table migration has not been applied yet."
+              ? "Track import attempts for this deck and see how each upload is progressing."
+              : "Import history will appear here once it is available for your account."
           }
           emptyTitle="No deck-linked import jobs yet"
-          emptyDescription="Create an import from this page to bind the request to this deck row once the import_jobs schema is available."
+          emptyDescription="Start an import from this page and it will appear here."
         />
 
         <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
             <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Restore notes</p>
-            <h2 className="mt-2 text-2xl font-bold">Blocked states are explicit</h2>
+            <h2 className="mt-2 text-2xl font-bold">How restore works</h2>
             <div className="mt-5 space-y-3 text-sm leading-6 text-slate-300">
-              <Bullet text="Restore preparation is authenticated and checks the deck row belongs to the current user before generating a signed URL." />
-              <Bullet text="If the backup row lacks `s3_key`, the API returns a conflict instead of a broken link." />
-              <Bullet text="If object-storage signing env vars are missing, the UI and API both surface the exact configuration gap." />
-              <Bullet text="Browser import is treated as a handoff to a trusted worker, with durable job status stored server-side before the file leaves the request." />
+              <Bullet text="Restore links are generated only for decks that belong to your account." />
+              <Bullet text="Each restore link is temporary so you can safely hand it off to your restore client." />
+              <Bullet text="If a backup is still syncing, the page will tell you instead of opening a broken download." />
+              <Bullet text="Recent imports stay attached to this deck so you can follow what happened next." />
             </div>
           </div>
 
@@ -189,10 +177,8 @@ export default async function DeckDetailPage({
           <div className="flex items-start gap-3">
             <Upload className="mt-1 h-4 w-4 shrink-0 text-indigo-200" />
             <div>
-              <p className="font-semibold text-indigo-200">Next backend hook worth building</p>
-              <p className="mt-1 text-indigo-100/90">
-                Teach the upstream import worker to post granular progress and imported deck metadata back into the callback route, then connect completed jobs to newly created deck rows automatically.
-              </p>
+              <p className="font-semibold text-indigo-200">Need a different deck?</p>
+              <p className="mt-1 text-indigo-100/90">Jump to another backup from the list above or head back to the full workspace.</p>
             </div>
           </div>
         </section>

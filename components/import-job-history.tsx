@@ -102,15 +102,12 @@ export function ImportJobHistory({
                       {job.completed_at ? `, finished ${formatDateTime(job.completed_at)}` : ""}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-300">
-                    Job {job.id}
-                  </div>
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   <MiniStat label="Package size" value={formatBytes(job.file_size_bytes)} />
                   <MiniStat label="Deck scope" value={deck ? deck.deck_name : "Account-wide"} />
-                  <MiniStat label="Worker status" value={job.worker_status ?? "Waiting"} />
+                  <MiniStat label="Import status" value={job.worker_status ?? "Waiting"} />
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
@@ -121,9 +118,6 @@ export function ImportJobHistory({
                   ) : (
                     <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1">No deck linked</span>
                   )}
-                  {job.worker_job_id ? (
-                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1">Worker job {job.worker_job_id}</span>
-                  ) : null}
                   {job.source_extension ? (
                     <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1">{job.source_extension}</span>
                   ) : null}
@@ -131,8 +125,8 @@ export function ImportJobHistory({
 
                 {job.error_message ? (
                   <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm leading-6 text-rose-100">
-                    <p className="font-semibold">Failure detail</p>
-                    <p className="mt-1">{job.error_message}</p>
+                    <p className="font-semibold">Import could not be completed</p>
+                    <p className="mt-1">Try again later or start a fresh import if the issue continues.</p>
                   </div>
                 ) : null}
               </article>

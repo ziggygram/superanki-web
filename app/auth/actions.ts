@@ -39,7 +39,7 @@ export async function signInWithMagicLink(_: AuthActionState, formData: FormData
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: `${siteUrl}/auth/complete?flow=magic&next=${encodeURIComponent(next)}`,
     },
   });
 
@@ -83,7 +83,7 @@ export async function signUpWithPassword(_: AuthActionState, formData: FormData)
     email,
     password,
     options: {
-      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: `${siteUrl}/auth/complete?flow=confirm&next=${encodeURIComponent(next)}`,
     },
   });
 
@@ -108,7 +108,7 @@ export async function requestPasswordReset(_: AuthActionState, formData: FormDat
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${siteUrl}/auth`,
+    redirectTo: `${siteUrl}/auth/complete?flow=recovery&next=${encodeURIComponent("/account")}`,
   });
 
   if (error) {

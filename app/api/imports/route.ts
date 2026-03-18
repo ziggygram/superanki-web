@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: "The selected file exceeds the configured import size limit.",
-        nextStep: `Keep imports under ${formatImportLimit(maxBytes)} or raise SUPERANKI_IMPORT_MAX_BYTES on the server.`,
+        nextStep: `Keep imports under ${formatImportLimit(maxBytes)} and try again.`,
       },
       { status: 413, headers: { "Cache-Control": "no-store" } },
     );
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: "Could not verify the selected deck.",
-          nextStep: "Refresh the deck page and try again with a deck row that belongs to this account.",
+          nextStep: "Refresh the page and try again.",
         },
         { status: 500, headers: { "Cache-Control": "no-store" } },
       );
@@ -130,8 +130,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: "Import job could not be persisted.",
-          nextStep: "Check the import_jobs table migration and Supabase insert policy before retrying.",
-          details: createJobError.message,
+          nextStep: "Please try again.",
         },
         { status: 500, headers: { "Cache-Control": "no-store" } },
       );
@@ -150,9 +149,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        error: "Web import handoff is not configured yet.",
-        nextStep:
-          "Set SUPERANKI_IMPORT_API_URL and SUPERANKI_IMPORT_API_TOKEN to forward browser uploads to a trusted import worker.",
+        error: "Web imports are temporarily unavailable.",
+        nextStep: "Please try again later.",
         file: {
           name: file.name,
           size: file.size,
@@ -207,7 +205,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: "The configured import service did not respond.",
-        nextStep: "Verify SUPERANKI_IMPORT_API_URL, networking, and the upstream service health.",
+        nextStep: "Please try again in a few minutes.",
         importJob: jobId ? { id: jobId, status: "failed" } : null,
       },
       { status: 502, headers: { "Cache-Control": "no-store" } },
@@ -233,9 +231,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: "The import service rejected the package.",
-        nextStep: "Inspect the upstream import worker logs and payload validation rules.",
-        upstreamStatus: upstreamResponse.status,
-        upstream: payload,
+        nextStep: "Check the file and try again.",
         importJob: jobId ? { id: jobId, status: "failed" } : null,
       },
       { status: 502, headers: { "Cache-Control": "no-store" } },
@@ -254,11 +250,10 @@ export async function POST(request: Request) {
 
   return NextResponse.json(
     {
-      message: "Import job queued with the configured worker.",
+      message: "Import started",
       nextStep: callbackConfig
-        ? "Track the durable job history below while the worker reports status changes back to the web app."
-        : "The worker was queued, but no callback base URL is configured yet, so the web app cannot receive follow-up status updates automatically.",
-      upstream: payload,
+        ? "You can follow progress from the import history below."
+        : "We’ve started the import. Progress updates may take a moment to appear.",
       importJob: jobId ? { id: jobId, status: "queued", workerJobId } : null,
       schemaReady: importJobsReady,
       callbackReady: Boolean(callbackConfig),

@@ -108,8 +108,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ dec
     return NextResponse.json(
       {
         error: "Failed to save GPT cards.",
-        details: error instanceof Error ? error.message : "Unknown error",
-        nextStep: "Run the latest Supabase migration so deck_cards exists and is writable.",
+        nextStep: "Please try again later.",
       },
       { status: 500, headers: { "Cache-Control": "no-store" } },
     );

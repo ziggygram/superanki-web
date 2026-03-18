@@ -17,8 +17,8 @@ export async function POST(request: Request) {
   if (!isGptTokenIssuanceReady()) {
     return NextResponse.json(
       {
-        error: "GPT token issuance is not configured yet.",
-        nextStep: "Set SUPERANKI_GPT_SHARED_SECRET on the server before generating deck-scoped GPT tokens.",
+        error: "Token generation is temporarily unavailable.",
+        nextStep: "Please try again later.",
       },
       { status: 501, headers: { "Cache-Control": "no-store" } },
     );
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: "Could not verify deck ownership.",
-        nextStep: "Refresh the deck page and retry once the authenticated session can read deck_sync.",
+        nextStep: "Refresh the page and try again.",
       },
       { status: 500, headers: { "Cache-Control": "no-store" } },
     );

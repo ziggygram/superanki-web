@@ -141,13 +141,10 @@ export function DeckManagementPanel({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Restore management</p>
-            <h3 className="mt-2 text-2xl font-bold text-white">Prepare a secure restore handoff</h3>
+            <h3 className="mt-2 text-2xl font-bold text-white">Prepare a secure restore link</h3>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              The browser does not restore Anki collections itself. This endpoint prepares a short-lived signed backup URL that a future native or worker-backed restore client can consume.
+              Generate a short-lived backup link you can open in your restore client.
             </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
-            POST only
           </div>
         </div>
 
@@ -162,7 +159,7 @@ export function DeckManagementPanel({
           }`}
         >
           {restoreLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          {restoreBlockedReason ? "Restore blocked" : "Prepare restore manifest"}
+          {restoreBlockedReason ? "Restore unavailable" : "Prepare restore link"}
         </button>
 
         {restoreBlockedReason ? (
@@ -178,9 +175,9 @@ export function DeckManagementPanel({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Import management</p>
-            <h3 className="mt-2 text-2xl font-bold text-white">Queue a web import handoff</h3>
+            <h3 className="mt-2 text-2xl font-bold text-white">Start a web import</h3>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              This route now creates durable import job rows before worker handoff, then surfaces real status history in the deck workspace instead of relying on one transient toast.
+              Upload an Anki package and follow its progress from this workspace.
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
@@ -189,7 +186,7 @@ export function DeckManagementPanel({
         </div>
 
         <label className="mt-5 flex cursor-pointer flex-col gap-3 rounded-2xl border border-dashed border-white/10 bg-slate-950/60 p-4 text-sm text-slate-300">
-          <span>{selectedFile ? selectedFile.name : "Choose an Anki package to validate and hand off."}</span>
+          <span>{selectedFile ? selectedFile.name : "Choose an Anki package to upload."}</span>
           <input
             type="file"
             accept=".apkg,.colpkg"
@@ -212,7 +209,7 @@ export function DeckManagementPanel({
           }`}
         >
           {importLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {importBlockedReason ? "Import blocked" : "Create import job"}
+          {importBlockedReason ? "Import unavailable" : "Start import"}
         </button>
 
         {importBlockedReason ? (

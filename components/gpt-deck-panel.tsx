@@ -54,10 +54,10 @@ export function GptDeckPanel({ deckId, deckName, tokenReady, forwardingReady }: 
 
       setState({
         tone: forwardingReady ? "success" : "warning",
-        title: forwardingReady ? "Deck token ready" : "Deck token ready, forwarding still blocked",
+        title: forwardingReady ? "Deck token ready" : "Deck token ready",
         description: forwardingReady
           ? payload.nextStep || "Use this as the Bearer token in your GPT action config."
-          : "The deck token is real and scoped correctly. GPT writes save directly into the deck_cards table once the latest Supabase migration is applied.",
+          : "You can use this token to finish setup now. Card saving may become available later.",
         token: payload.token,
         actionUrl: payload.actionUrl,
         openApiUrl: payload.openApiUrl,
@@ -105,7 +105,7 @@ export function GptDeckPanel({ deckId, deckName, tokenReady, forwardingReady }: 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <InfoCard
           title="1. Generate token"
-          description="Issued from your authenticated session and scoped to this deck_sync row only."
+          description="Issued from your authenticated session and scoped to this deck only."
         />
         <InfoCard
           title="2. Paste schema"
@@ -134,13 +134,13 @@ export function GptDeckPanel({ deckId, deckName, tokenReady, forwardingReady }: 
 
         {!tokenReady ? (
           <span className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-            Set SUPERANKI_GPT_SHARED_SECRET to turn on token issuance.
+            Token generation is temporarily unavailable.
           </span>
         ) : null}
 
         {!forwardingReady ? (
           <span className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
-            Direct GPT writes use the deck_cards table. Apply the latest Supabase migration if this is not live yet.
+            Card saving may be limited while this feature rolls out.
           </span>
         ) : null}
       </div>

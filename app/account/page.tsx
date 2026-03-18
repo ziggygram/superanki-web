@@ -83,16 +83,16 @@ export default async function AccountPage() {
 
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
               <Link
-                href="/decks"
+                href="/study"
                 className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 px-5 py-3 font-semibold text-white hover:bg-indigo-500"
               >
-                Open deck workspace
+                Study now
               </Link>
               <Link
-                href="/agents"
+                href="/decks"
                 className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-slate-200 hover:bg-white/10"
               >
-                View agents
+                Open deck workspace
               </Link>
               <Link
                 href="/"
@@ -117,7 +117,7 @@ export default async function AccountPage() {
             icon={Cloud}
             label="Synced decks"
             value={String(summary.syncedDecks)}
-            detail={summary.syncedDecks ? "Live from deck_sync" : "No cloud backup records yet"}
+            detail={summary.syncedDecks ? "Backed up and ready to browse" : "No cloud backup records yet"}
           />
           <MetricCard
             icon={Database}
@@ -129,7 +129,7 @@ export default async function AccountPage() {
             icon={Activity}
             label="Reviews, 30 days"
             value={summary.cardsReviewedLast30Days.toLocaleString("en-US")}
-            detail={recentStats.length ? "Pulled from study_stats" : "No study_stats rows yet"}
+            detail={recentStats.length ? "Recent study activity" : "No recent study activity yet"}
           />
           <MetricCard
             icon={Shield}
@@ -146,11 +146,11 @@ export default async function AccountPage() {
                 <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Sync and backups</p>
                 <h2 className="mt-2 text-2xl font-bold">Cloud deck backups</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
-                  This section reads your synced deck metadata server-side using the current authenticated Supabase session. If your iOS app has already written backup rows, they appear here immediately.
+                  Browse your latest synced decks, backup availability, and recent study progress in one place.
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
-                {syncItems.length ? `${syncItems.length} backup item${syncItems.length === 1 ? "" : "s"}` : "No backup rows yet"}
+                {syncItems.length ? `${syncItems.length} backup${syncItems.length === 1 ? "" : "s"}` : "No backups yet"}
               </div>
             </div>
 
@@ -171,10 +171,6 @@ export default async function AccountPage() {
                         </div>
                         <div className="mt-4 grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
                           <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                            <p className="text-slate-500">Deck ID</p>
-                            <p className="mt-1 break-all font-medium text-slate-200">{item.deck_id}</p>
-                          </div>
-                          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                             <p className="text-slate-500">Cards</p>
                             <p className="mt-1 font-medium text-slate-200">{(item.card_count ?? 0).toLocaleString("en-US")}</p>
                           </div>
@@ -182,17 +178,16 @@ export default async function AccountPage() {
                             <p className="text-slate-500">Last synced</p>
                             <p className="mt-1 font-medium text-slate-200">{formatDate(item.last_synced_at, { timeStyle: "short" })}</p>
                           </div>
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                            <p className="text-slate-500">Backup</p>
+                            <p className="mt-1 font-medium text-slate-200">{item.s3_key ? "Available" : "Processing"}</p>
+                          </div>
                         </div>
-                        <div className="mt-4 space-y-2 text-sm text-slate-400">
-                          <p>
-                            <span className="text-slate-500">Storage key:</span>{" "}
-                            <span className="break-all text-slate-300">{item.s3_key ?? "Not written yet"}</span>
-                          </p>
-                          <p>
-                            <span className="text-slate-500">Checksum:</span>{" "}
-                            <span className="break-all text-slate-300">{item.checksum ?? "Not available yet"}</span>
-                          </p>
-                        </div>
+                        <p className="mt-4 text-sm leading-6 text-slate-400">
+                          {item.s3_key
+                            ? "This backup is available to restore from a secure download link."
+                            : "This deck is still syncing its latest backup and will appear here when ready."}
+                        </p>
                       </div>
 
                       <div className="flex flex-col gap-3 lg:w-52">
@@ -214,7 +209,7 @@ export default async function AccountPage() {
                           Request backup
                         </a>
                         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-xs leading-5 text-slate-400">
-                          Downloads are gated through a server route and redirected to a short-lived signed URL. Your storage credentials stay server-only.
+                          Downloads are delivered through a secure temporary link.
                         </div>
                       </div>
                     </div>
@@ -225,7 +220,7 @@ export default async function AccountPage() {
               <EmptyStateCard
                 icon={CloudOff}
                 title="No cloud backup records yet"
-                description="We did not find any deck_sync rows for this account. As soon as the iOS app writes sync metadata, this dashboard will show each deck, card counts, timestamps, and storage keys from the server."
+                description="Your synced decks will show up here as soon as your account finishes its first backup."
               />
             )}
           </div>
@@ -251,35 +246,24 @@ export default async function AccountPage() {
                 <EmptyStateCard
                   icon={Calendar}
                   title="No study stats yet"
-                  description="The dashboard is ready for synced daily review totals, but no study_stats rows are available for this account yet."
+                  description="Your study activity will appear here after your first synced review session."
                 />
               )}
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
-              <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Integration status</p>
-              <h2 className="mt-2 text-2xl font-bold">What is live now</h2>
+              <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Availability</p>
+              <h2 className="mt-2 text-2xl font-bold">Account services</h2>
               <div className="mt-5 space-y-3 text-sm text-slate-300">
-                <StatusRow label="Authenticated server session" ok />
-                <StatusRow label="Profile query" ok={integrations.profileReady} />
-                <StatusRow label="deck_sync query" ok={integrations.syncReady} />
-                <StatusRow label="study_stats query" ok={integrations.statsReady} />
-                <StatusRow label="Private backup download signing" ok={integrations.storageDownloadReady} />
+                <StatusRow label="Secure sign-in" ok />
+                <StatusRow label="Profile" ok={integrations.profileReady} />
+                <StatusRow label="Deck backups" ok={integrations.syncReady} />
+                <StatusRow label="Study activity" ok={integrations.statsReady} />
+                <StatusRow label="Backup downloads" ok={integrations.storageDownloadReady} />
               </div>
-
-              {integrations.notes.length || !integrations.storageDownloadReady ? (
+              {!integrations.profileReady || !integrations.syncReady || !integrations.statsReady || !integrations.storageDownloadReady ? (
                 <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-                  <p className="font-semibold text-amber-200">Setup notes</p>
-                  <ul className="mt-2 list-disc space-y-1 pl-5">
-                    {integrations.notes.map((note) => (
-                      <li key={note}>{note}</li>
-                    ))}
-                    {!integrations.storageDownloadReady ? (
-                      <li>
-                        Set <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_STORAGE_ENDPOINT</code>, <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_STORAGE_BUCKET</code>, <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_STORAGE_REGION</code>, <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_STORAGE_ACCESS_KEY_ID</code>, and <code className="rounded bg-black/20 px-1 py-0.5">SUPERANKI_STORAGE_SECRET_ACCESS_KEY</code> to enable one-click private backup downloads.
-                      </li>
-                    ) : null}
-                  </ul>
+                  Some account features are still becoming available. If something looks incomplete, try again shortly.
                 </div>
               ) : null}
             </section>
@@ -289,8 +273,8 @@ export default async function AccountPage() {
               <h2 className="mt-2 text-2xl font-bold">Identity and security</h2>
               <div className="mt-5 space-y-3">
                 <InfoRow icon={UserRound} label="Email" value={user.email ?? "Unknown"} />
-                <InfoRow icon={HardDrive} label="User ID" value={user.id} mono />
-                <InfoRow icon={CheckCircle2} label="Auth provider" value="Supabase magic link" />
+                <InfoRow icon={HardDrive} label="Deck workspace" value="Available from this account" />
+                <InfoRow icon={CheckCircle2} label="Secure access" value="Email and password sign-in enabled" />
               </div>
             </section>
           </div>
@@ -301,7 +285,7 @@ export default async function AccountPage() {
             <div>
               <p className="font-semibold text-indigo-200">Next product slice now live</p>
               <p className="mt-1 text-indigo-100/90">
-                The deck workspace ships at <code className="rounded bg-black/20 px-1 py-0.5">/decks</code> with per-deck detail pages, authenticated restore preparation, and explicit import blocking until a trusted import worker is configured.
+                The deck workspace brings together backups, import history, and restore handoff in one place.
               </p>
             </div>
             <div className="inline-flex items-center gap-2 text-indigo-200">
@@ -380,7 +364,7 @@ function StatusRow({ label, ok }: { label: string; ok: boolean }) {
           ok ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"
         }`}
       >
-        {ok ? "Ready" : "Needs wiring"}
+        {ok ? "Available" : "Unavailable"}
       </span>
     </div>
   );

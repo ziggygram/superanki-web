@@ -26,8 +26,8 @@ export async function POST(
   if (error) {
     return NextResponse.json(
       {
-        error: error.message,
-        nextStep: "Ensure the deck_sync table exists and the authenticated user can read the requested deck row.",
+        error: "We couldn’t prepare this backup right now.",
+        nextStep: "Refresh the page and try again.",
       },
       { status: 500, headers: { "Cache-Control": "no-store" } },
     );
@@ -36,8 +36,8 @@ export async function POST(
   if (!backup) {
     return NextResponse.json(
       {
-        error: "Deck backup not found.",
-        nextStep: "Refresh the deck list and retry against a valid backup row for this account.",
+        error: "This backup is no longer available.",
+        nextStep: "Choose another deck and try again.",
       },
       { status: 404, headers: { "Cache-Control": "no-store" } },
     );
@@ -46,8 +46,8 @@ export async function POST(
   if (!backup.s3_key) {
     return NextResponse.json(
       {
-        error: "Restore is blocked because this deck backup does not have an object-storage key yet.",
-        nextStep: "Write the uploaded backup object key into deck_sync.s3_key before attempting restore preparation.",
+        error: "This backup is still being prepared.",
+        nextStep: "Try again after the latest sync finishes.",
       },
       { status: 409, headers: { "Cache-Control": "no-store" } },
     );
@@ -56,9 +56,8 @@ export async function POST(
   if (!isStorageConfigured()) {
     return NextResponse.json(
       {
-        error: "Restore is blocked because object-storage signing is not configured on the web app.",
-        nextStep:
-          "Set SUPERANKI_STORAGE_ENDPOINT, SUPERANKI_STORAGE_BUCKET, SUPERANKI_STORAGE_REGION, SUPERANKI_STORAGE_ACCESS_KEY_ID, and SUPERANKI_STORAGE_SECRET_ACCESS_KEY.",
+        error: "Backup downloads are temporarily unavailable.",
+        nextStep: "Please try again later.",
       },
       { status: 501, headers: { "Cache-Control": "no-store" } },
     );
@@ -83,8 +82,7 @@ export async function POST(
         expiresInSeconds: 60,
         lastSyncedAt: backup.last_synced_at,
       },
-      nextStep:
-        "Use this short-lived signed URL from a trusted restore client or worker. The browser UI does not apply the backup locally.",
+      nextStep: "Open this secure link in your restore client within the next minute.",
     },
     { status: 200, headers: { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" } },
   );
