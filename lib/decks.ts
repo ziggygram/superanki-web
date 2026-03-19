@@ -68,12 +68,18 @@ async function getBaseAccountData() {
     return { user: null as null };
   }
 
-  const [profileResult, syncResult, statsResult, importJobsResult] = await Promise.all([
+  const [profileResult, syncResult, syncDecksResult, statsResult, importJobsResult] = await Promise.all([
     supabase.from("profiles").select("email, display_name, created_at").eq("id", user.id).maybeSingle(),
     supabase
       .from("deck_sync")
       .select("id, deck_id, deck_name, card_count, s3_key, last_synced_at, checksum")
       .order("last_synced_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("sync_decks")
+      .select("id, name, color_hex, position, folder_id, usn, created_at, updated_at, is_deleted")
+      .eq("is_deleted", false)
+      .order("position", { ascending: true })
       .limit(100),
     supabase
       .from("study_stats")
@@ -91,10 +97,49 @@ async function getBaseAccountData() {
 
   const profile = normalizeQueryResult<ProfileRow>("profiles", profileResult);
   const sync = normalizeQueryResult<SyncRow[]>("deck_sync", syncResult);
+  const syncDecks = syncDecksResult.data ?? [];
   const stats = normalizeQueryResult<StudyStatRow[]>("study_stats", statsResult);
   const importJobs = normalizeQueryResult<ImportJobRow[]>("import_jobs", importJobsResult);
 
-  const syncItems = sync.data ?? [];
+  // Merge: deck_sync (legacy backup table) + sync_decks (real sync table from iOS)
+  const legacyItems = sync.data ?? [];
+  const legacyDeckIds = new Set(legacyItems.map((item) => item.deck_id));
+
+  // Add sync_decks that aren't already in deck_sync
+  const extraItems: SyncRow[] = syncDecks
+    .filter((sd: { id: string }) => !legacyDeckIds.has(sd.id))
+    .map((sd: { id: string; name: string; updated_at: string }) => ({
+      id: 0, // no legacy ID
+      deck_id: sd.id,
+      deck_name: sd.name,
+      card_count: null, // will be populated below
+      s3_key: null,
+      last_synced_at: sd.updated_at,
+      checksum: null,
+    }));
+
+  const syncItems = [...legacyItems, ...extraItems];
+
+  // Populate card counts from sync_cards for items without counts
+  if (syncItems.some((item) => item.card_count == null)) {
+    const deckIds = syncItems.filter((item) => item.card_count == null).map((item) => item.deck_id);
+    const { data: cardCounts } = await supabase
+      .from("sync_cards")
+      .select("deck_id")
+      .eq("is_deleted", false)
+      .in("deck_id", deckIds);
+    if (cardCounts) {
+      const countMap = new Map<string, number>();
+      for (const row of cardCounts) {
+        countMap.set(row.deck_id, (countMap.get(row.deck_id) ?? 0) + 1);
+      }
+      for (const item of syncItems) {
+        if (item.card_count == null) {
+          item.card_count = countMap.get(item.deck_id) ?? 0;
+        }
+      }
+    }
+  }
   const recentStats = stats.data ?? [];
   const recentImportJobs = importJobs.data ?? [];
   const latestStat = recentStats[0] ?? null;
