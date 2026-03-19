@@ -64,6 +64,12 @@ export default async function DeckDetailPage({
                   {detail.deck.card_count ?? 0} cards tracked
                 </span>
                 <Link
+                  href={`/study/${detail.deck.id}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-green-400/20 bg-green-400/10 px-4 py-2 font-medium text-green-100 hover:bg-green-400/15"
+                >
+                  Study now
+                </Link>
+                <Link
                   href={`/decks/${detail.deck.id}/gpt`}
                   className="inline-flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-400/10 px-4 py-2 font-medium text-indigo-100 hover:bg-indigo-400/15"
                 >
