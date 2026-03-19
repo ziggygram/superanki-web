@@ -202,7 +202,7 @@ export function StudySession({ cards: initialCards, deckName, deckId, userId }: 
         <div className="grid grid-cols-4 gap-3">
           {RATING_CONFIG.map(({ rating, label, color, key }) => {
             const p = preview[rating];
-            const intervalLabel = dueLabel(p.scheduledDays, p.state);
+            const intervalLabel = dueLabel(p.scheduledDays, p.state, p.rating);
             return (
               <button
                 key={rating}
