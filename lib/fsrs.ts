@@ -1,6 +1,6 @@
 /**
  * FSRS-5 Spaced Repetition Engine
- * TypeScript implementation matching the iOS SuperAnki app parameters.
+ * TypeScript implementation matching the iOS SuperAnki app exactly.
  */
 
 // FSRS-5 default weights (from iOS app)
@@ -10,8 +10,7 @@ const w = [
 ];
 
 const REQUEST_RETENTION = 0.9;
-const DECAY = -0.5;
-const FACTOR = 19 / 81; // 0.9^(1/DECAY) - 1
+const MAXIMUM_INTERVAL = 36500;
 
 export enum State {
   New = 0,
@@ -74,15 +73,17 @@ function initDifficulty(rating: Rating): number {
   return clamp(w[4] - Math.exp(w[5] * (rating - 1)) + 1, 1, 10);
 }
 
+/** Forgetting curve matching iOS: pow(1 + t/(9*s), -1) */
 function forgettingCurve(elapsedDays: number, stability: number): number {
   if (stability <= 0) return 0;
-  return Math.pow(1 + (FACTOR * elapsedDays) / stability, DECAY);
+  return Math.pow(1.0 + elapsedDays / (9.0 * stability), -1.0);
 }
 
+/** nextDifficulty matching iOS: d + delta + meanReversion */
 function nextDifficulty(d: number, rating: Rating): number {
-  const nextD = d - w[6] * (rating - 3);
-  // Mean reversion
-  return clamp(w[7] * initDifficulty(Rating.Easy) + (1 - w[7]) * nextD, 1, 10);
+  const deltaDifficulty = -w[6] * (rating - 3);
+  const meanReversion = w[7] * (initDifficulty(Rating.Easy) - d);
+  return clamp(d + deltaDifficulty + meanReversion, 1, 10);
 }
 
 function nextRecallStability(
@@ -91,9 +92,10 @@ function nextRecallStability(
   r: number,
   rating: Rating,
 ): number {
-  const hardPenalty = rating === Rating.Hard ? w[15] : 1;
-  const easyBonus = rating === Rating.Easy ? w[16] : 1;
-  return (
+  const hardPenalty = rating === Rating.Hard ? (w[15] > 0 ? w[15] : 1.0) : 1.0;
+  const easyBonus = rating === Rating.Easy ? (w[16] > 0 ? w[16] : 1.0) : 1.0;
+
+  const newS =
     s *
     (1 +
       Math.exp(w[8]) *
@@ -101,8 +103,8 @@ function nextRecallStability(
         Math.pow(s, -w[9]) *
         (Math.exp((1 - r) * w[10]) - 1) *
         hardPenalty *
-        easyBonus)
-  );
+        easyBonus);
+  return Math.min(newS, MAXIMUM_INTERVAL);
 }
 
 function nextForgetStability(
@@ -110,47 +112,94 @@ function nextForgetStability(
   s: number,
   r: number,
 ): number {
-  return (
+  const newS =
     w[11] *
     Math.pow(d, -w[12]) *
     (Math.pow(s + 1, w[13]) - 1) *
-    Math.exp((1 - r) * w[14])
-  );
+    Math.exp((1 - r) * w[14]);
+  return Math.max(Math.min(newS, s), 0.1);
 }
 
-function nextInterval(stability: number): number {
-  return Math.max(
-    1,
-    Math.round((stability / FACTOR) * (Math.pow(REQUEST_RETENTION, 1 / DECAY) - 1)),
-  );
+/** nextInterval matching iOS exactly */
+function nextInterval(stability: number, state: State, rating: Rating): number {
+  switch (state) {
+    case State.New:
+      return 0;
+    case State.Learning:
+    case State.Relearning:
+      if (rating === Rating.Again || rating === Rating.Hard) return 0;
+      if (rating === Rating.Good) return 1;
+      // Easy graduates with at least 2 days
+      return Math.max(2, Math.round(stability));
+    case State.Review: {
+      const baseInterval = stability * 9.0 * (1.0 / REQUEST_RETENTION - 1.0);
+      const clamped = Math.max(1.0, Math.min(baseInterval, MAXIMUM_INTERVAL));
+      let interval = Math.round(clamped);
+
+      // Enforce min spread matching iOS
+      if (rating === Rating.Hard) {
+        const hardCeiling = Math.round(clamped * w[15]);
+        interval = Math.max(1, Math.min(interval, hardCeiling));
+      } else if (rating === Rating.Easy) {
+        const easyFloor = Math.ceil(clamped * w[16]);
+        interval = Math.max(interval, easyFloor);
+      }
+
+      return interval;
+    }
+    default:
+      return 0;
+  }
 }
 
-/** Format an interval in days to a human-readable label matching iOS */
-export function dueLabel(intervalDays: number, state: State): string {
+/** State after rating, matching iOS stateAfterRating */
+function stateAfterRating(rating: Rating, wasNew: boolean): State {
+  switch (rating) {
+    case Rating.Again:
+      return wasNew ? State.Learning : State.Relearning;
+    case Rating.Hard:
+      return wasNew ? State.Learning : State.Review;
+    case Rating.Good:
+    case Rating.Easy:
+      return State.Review;
+  }
+}
+
+/** Format due label matching iOS exactly */
+export function dueLabel(scheduledDays: number, state: State, rating?: Rating): string {
+  // Learning/relearning: hardcoded labels matching iOS
   if (state === State.Learning || state === State.Relearning) {
-    // Learning intervals are in minutes
-    const mins = intervalDays * 24 * 60;
-    if (mins < 60) return `${Math.round(mins)}m`;
-    if (mins < 1440) return `${Math.round(mins / 60)}h`;
-    return `${Math.round(mins / 1440)}d`;
+    if (rating === Rating.Again) return "1m";
+    if (rating === Rating.Hard) return "6m";
+    if (rating === Rating.Good) return "10m";
+    // Easy graduates - fall through to days-based
   }
-  if (intervalDays < 1) {
-    return `${Math.round(intervalDays * 24 * 60)}m`;
-  }
-  if (intervalDays < 30) return `${Math.round(intervalDays)}d`;
-  if (intervalDays < 365) {
-    const months = intervalDays / 30;
-    return months < 10
-      ? `${months.toFixed(1)}mo`
-      : `${Math.round(months)}mo`;
-  }
-  const years = intervalDays / 365;
-  return years < 10 ? `${years.toFixed(1)}y` : `${Math.round(years)}y`;
-}
 
-// Learning step intervals in minutes
-const LEARNING_STEPS = [1, 10]; // Again=1min, Good=10min
-const RELEARNING_STEPS = [10]; // Again=10min
+  // Days-based intervals matching iOS intervalLabel/dueLabel
+  const days = scheduledDays;
+  if (days === 0) return "< 1d";
+  if (days === 1) return "1d";
+  if (days < 31) return `${days}d`;
+  if (days < 365) {
+    const months = days / 30.44;
+    if (months < 2) {
+      // Show weeks for 1-2 months range
+      const weeks = Math.floor(days / 7);
+      return `${weeks}w`;
+    }
+    const tenths = Math.floor(months * 10) % 10;
+    if (tenths === 0) return `${Math.floor(months)}mo`;
+    return `${months.toFixed(1)}mo`;
+  }
+  const years = days / 365.25;
+  if (years < 2) {
+    const months = Math.floor(days / 30.44);
+    return `${months}mo`;
+  }
+  const tenths = Math.floor(years * 10) % 10;
+  if (tenths === 0) return `${Math.floor(years)}y`;
+  return `${years.toFixed(1)}y`;
+}
 
 export function schedule(
   card: Card,
@@ -161,125 +210,79 @@ export function schedule(
   const elapsedDays =
     card.state === State.New
       ? 0
-      : Math.max(0, (now.getTime() - lastReview.getTime()) / (1000 * 60 * 60 * 24));
+      : Math.max(0, Math.floor((now.getTime() - lastReview.getTime()) / (1000 * 60 * 60 * 24)));
 
   let newState: State;
   let newStability: number;
   let newDifficulty: number;
   let newLapses = card.lapses;
   let scheduledDays: number;
-  let dueDateMs: number;
 
-  if (card.state === State.New) {
-    // --- New card ---
+  const currentState = card.state as State;
+
+  if (currentState === State.New) {
+    // --- New card: matching iOS ---
     newDifficulty = initDifficulty(rating);
     newStability = initStability(rating);
+    newState = stateAfterRating(rating, true);
+  } else if (currentState === State.Learning || currentState === State.Relearning) {
+    // --- Learning/Relearning: matching iOS ---
+    // iOS does NOT update difficulty during learning/relearning
+    newDifficulty = card.difficulty;
+    newState = stateAfterRating(rating, false);
 
-    if (rating === Rating.Again) {
-      newState = State.Learning;
-      newLapses++;
-      scheduledDays = LEARNING_STEPS[0] / (24 * 60);
-      dueDateMs = now.getTime() + LEARNING_STEPS[0] * 60 * 1000;
-    } else if (rating === Rating.Hard) {
-      newState = State.Learning;
-      scheduledDays = LEARNING_STEPS[0] / (24 * 60);
-      dueDateMs = now.getTime() + LEARNING_STEPS[0] * 60 * 1000;
-    } else if (rating === Rating.Good) {
-      newState = State.Learning;
-      scheduledDays = LEARNING_STEPS[1] / (24 * 60);
-      dueDateMs = now.getTime() + LEARNING_STEPS[1] * 60 * 1000;
+    // Apply w[15]/w[16] multipliers when graduating to review (matching iOS)
+    if (newState === State.Review) {
+      if (rating === Rating.Hard) {
+        newStability = card.stability * w[15];
+      } else if (rating === Rating.Easy) {
+        newStability = card.stability * w[16];
+      } else {
+        newStability = card.stability;
+      }
     } else {
-      // Easy -> graduate directly to review
-      newState = State.Review;
-      const interval = Math.max(1, nextInterval(newStability));
-      // Apply easy floor
-      const adjustedInterval = Math.max(interval, Math.ceil(newStability * w[16]));
-      scheduledDays = adjustedInterval;
-      dueDateMs = now.getTime() + adjustedInterval * 24 * 60 * 60 * 1000;
-    }
-  } else if (card.state === State.Learning || card.state === State.Relearning) {
-    // --- Learning / Relearning ---
-    const steps =
-      card.state === State.Learning ? LEARNING_STEPS : RELEARNING_STEPS;
-
-    if (rating === Rating.Again) {
-      newState = card.state;
-      newDifficulty = nextDifficulty(card.difficulty, rating);
-      newStability = card.state === State.Relearning
-        ? Math.max(nextForgetStability(card.difficulty, card.stability, forgettingCurve(elapsedDays, card.stability)), 0.1)
-        : initStability(rating);
-      if (card.state === State.Learning) newLapses++;
-      scheduledDays = steps[0] / (24 * 60);
-      dueDateMs = now.getTime() + steps[0] * 60 * 1000;
-    } else if (rating === Rating.Hard) {
-      newState = card.state;
-      newDifficulty = nextDifficulty(card.difficulty, rating);
       newStability = card.stability;
-      scheduledDays = steps[0] / (24 * 60);
-      dueDateMs = now.getTime() + steps[0] * 60 * 1000;
-    } else if (rating === Rating.Good) {
-      // Graduate to review
-      newState = State.Review;
-      newDifficulty = nextDifficulty(card.difficulty, rating);
-      newStability = card.stability > 0 ? card.stability : initStability(rating);
-      let interval = nextInterval(newStability);
-      // Apply w[15] ceiling for graduating cards
-      interval = Math.min(interval, Math.max(1, Math.floor(newStability * w[16])));
-      interval = Math.max(1, interval);
-      scheduledDays = interval;
-      dueDateMs = now.getTime() + interval * 24 * 60 * 60 * 1000;
-    } else {
-      // Easy -> graduate with bonus
-      newState = State.Review;
-      newDifficulty = nextDifficulty(card.difficulty, rating);
-      newStability = card.stability > 0 ? card.stability : initStability(rating);
-      let interval = nextInterval(newStability);
-      // Apply easy floor
-      interval = Math.max(interval, Math.ceil(newStability * w[16]));
-      interval = Math.max(1, interval);
-      scheduledDays = interval;
-      dueDateMs = now.getTime() + interval * 24 * 60 * 60 * 1000;
     }
   } else {
-    // --- Review card ---
+    // --- Review card: matching iOS ---
     const r = forgettingCurve(elapsedDays, card.stability);
     newDifficulty = nextDifficulty(card.difficulty, rating);
 
     if (rating === Rating.Again) {
-      // Lapse -> relearning
+      newStability = nextForgetStability(newDifficulty, card.stability, r);
       newState = State.Relearning;
-      newLapses++;
-      newStability = Math.max(
-        nextForgetStability(card.difficulty, card.stability, r),
-        0.1,
-      );
-      scheduledDays = RELEARNING_STEPS[0] / (24 * 60);
-      dueDateMs = now.getTime() + RELEARNING_STEPS[0] * 60 * 1000;
     } else {
+      newStability = nextRecallStability(newDifficulty, card.stability, r, rating);
       newState = State.Review;
-      newStability = nextRecallStability(card.difficulty, card.stability, r, rating);
-      let interval = nextInterval(newStability);
-
-      // Enforce min spread: Hard ceiling, Easy floor
-      const prevInterval = card.scheduled_days || 1;
-      if (rating === Rating.Hard) {
-        interval = Math.min(interval, Math.max(1, Math.floor(prevInterval * w[15])));
-        interval = Math.max(1, interval);
-      } else if (rating === Rating.Easy) {
-        interval = Math.max(interval, Math.ceil(prevInterval * w[16]));
-      }
-      // Good: just use computed interval but ensure > hard
-      if (rating === Rating.Good) {
-        const hardInterval = Math.max(1, Math.floor(prevInterval * w[15]));
-        interval = Math.max(interval, hardInterval + 1);
-      }
-
-      scheduledDays = interval;
-      dueDateMs = now.getTime() + interval * 24 * 60 * 60 * 1000;
     }
   }
 
-  const dueDate = new Date(dueDateMs);
+  // Lapses: iOS increments on Again regardless of state
+  if (rating === Rating.Again) {
+    newLapses++;
+  }
+
+  // Compute interval using iOS logic
+  scheduledDays = nextInterval(newStability, newState, rating);
+
+  // Compute due date
+  let dueDate: Date;
+  if (newState === State.Learning || newState === State.Relearning) {
+    // Learning/relearning: scheduledDays=0 means "now" (intra-day scheduling)
+    // Use minute-based offsets for actual due time
+    let minuteOffset = 1; // default
+    if (rating === Rating.Again) minuteOffset = 1;
+    else if (rating === Rating.Hard) minuteOffset = 6;
+    else if (rating === Rating.Good) minuteOffset = 10;
+    dueDate = new Date(now.getTime() + minuteOffset * 60 * 1000);
+  } else {
+    dueDate = new Date(now.getTime() + scheduledDays * 24 * 60 * 60 * 1000);
+  }
+
+  const retrievability =
+    newState === State.Review
+      ? forgettingCurve(scheduledDays, newStability)
+      : null;
 
   return {
     card: {
@@ -290,12 +293,9 @@ export function schedule(
       last_review: now.toISOString(),
       lapses: newLapses,
       reps: card.reps + 1,
-      elapsed_days: Math.round(elapsedDays),
+      elapsed_days: elapsedDays,
       scheduled_days: scheduledDays,
-      retrievability:
-        newState === State.Review
-          ? forgettingCurve(scheduledDays, newStability)
-          : null,
+      retrievability,
     },
     reviewLog: {
       rating,
@@ -303,7 +303,7 @@ export function schedule(
       due: dueDate.toISOString(),
       stability: newStability,
       difficulty: newDifficulty,
-      elapsed_days: Math.round(elapsedDays),
+      elapsed_days: elapsedDays,
       last_elapsed_days: card.elapsed_days,
       scheduled_days: scheduledDays,
       review: now.toISOString(),
@@ -315,13 +315,14 @@ export function schedule(
 export function previewSchedule(
   card: Card,
   now: Date = new Date(),
-): Record<Rating, { scheduledDays: number; state: State }> {
-  const results = {} as Record<Rating, { scheduledDays: number; state: State }>;
+): Record<Rating, { scheduledDays: number; state: State; rating: Rating }> {
+  const results = {} as Record<Rating, { scheduledDays: number; state: State; rating: Rating }>;
   for (const r of [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy]) {
     const result = schedule(card, r, now);
     results[r] = {
       scheduledDays: result.card.scheduled_days!,
       state: result.card.state!,
+      rating: r,
     };
   }
   return results;
