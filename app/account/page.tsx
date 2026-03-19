@@ -3,16 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Activity,
-  ArrowUpRight,
   Calendar,
-  CheckCircle2,
   Cloud,
   CloudOff,
   Database,
   Download,
-  HardDrive,
   Shield,
-  UserRound,
 } from "lucide-react";
 import { signOut } from "@/app/auth/actions";
 import { getAccountDashboardData } from "@/lib/dashboard";
@@ -251,49 +247,11 @@ export default async function AccountPage() {
               )}
             </section>
 
-            <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
-              <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Availability</p>
-              <h2 className="mt-2 text-2xl font-bold">Account services</h2>
-              <div className="mt-5 space-y-3 text-sm text-slate-300">
-                <StatusRow label="Secure sign-in" ok />
-                <StatusRow label="Profile" ok={integrations.profileReady} />
-                <StatusRow label="Deck backups" ok={integrations.syncReady} />
-                <StatusRow label="Study activity" ok={integrations.statsReady} />
-                <StatusRow label="Backup downloads" ok={integrations.storageDownloadReady} />
-              </div>
-              {!integrations.profileReady || !integrations.syncReady || !integrations.statsReady || !integrations.storageDownloadReady ? (
-                <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-                  Some account features are still becoming available. If something looks incomplete, try again shortly.
-                </div>
-              ) : null}
-            </section>
 
-            <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
-              <p className="text-sm uppercase tracking-[0.2em] text-indigo-300">Account details</p>
-              <h2 className="mt-2 text-2xl font-bold">Identity and security</h2>
-              <div className="mt-5 space-y-3">
-                <InfoRow icon={UserRound} label="Email" value={user.email ?? "Unknown"} />
-                <InfoRow icon={HardDrive} label="Deck workspace" value="Available from this account" />
-                <InfoRow icon={CheckCircle2} label="Secure access" value="Email and password sign-in enabled" />
-              </div>
-            </section>
           </div>
         </section>
 
-        <section className="rounded-3xl border border-indigo-400/20 bg-indigo-400/10 p-6 text-sm leading-6 text-indigo-100">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-semibold text-indigo-200">Next product slice now live</p>
-              <p className="mt-1 text-indigo-100/90">
-                The deck workspace brings together backups, import history, and restore handoff in one place.
-              </p>
-            </div>
-            <div className="inline-flex items-center gap-2 text-indigo-200">
-              <ArrowUpRight className="h-4 w-4" />
-              Deck slice shipped
-            </div>
-          </div>
-        </section>
+
       </div>
     </main>
   );
@@ -355,41 +313,4 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StatusRow({ label, ok }: { label: string; ok: boolean }) {
-  return (
-    <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3">
-      <span>{label}</span>
-      <span
-        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-          ok ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"
-        }`}
-      >
-        {ok ? "Available" : "Unavailable"}
-      </span>
-    </div>
-  );
-}
 
-function InfoRow({
-  icon: Icon,
-  label,
-  value,
-  mono,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-      <div className="rounded-xl bg-white/5 p-2 text-slate-300">
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-sm text-slate-500">{label}</p>
-        <p className={`mt-1 break-all text-sm text-slate-200 ${mono ? "font-mono" : ""}`}>{value}</p>
-      </div>
-    </div>
-  );
-}
